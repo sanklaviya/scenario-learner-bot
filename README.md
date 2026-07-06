@@ -4,6 +4,8 @@
 
 🌍 **Track:** Agents for Good — Education
 
+![cover_page_banner](assets/cover_page_banner.png)
+
 ---
 
 ## What It Does
@@ -31,6 +33,8 @@ mcp_server.py (FastMCP, stdio transport — 4 tools)
 ```
 
 **Security:** `before_model_callback` screens all inputs (PII redaction, injection detection, content filter).
+
+![architecture_diagram](assets/architecture_diagram.png)
 
 ---
 
