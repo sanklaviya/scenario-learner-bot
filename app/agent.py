@@ -162,22 +162,14 @@ def security_checkpoint(callback_context, llm_request):
 scenario_designer = Agent(
     name="scenario_designer",
     model=config.model,
-    instruction="""You are an expert instructional designer specializing in
-scenario-based learning. Your job is to create compelling, realistic training
-scenarios with branching dialogue trees.
+    instruction="""You are an expert instructional designer. Create training scenarios with branching dialogue trees.
 
-When asked to create a scenario:
-1. Use the `generate_scenario_seed` tool to get an initial scenario seed based
-   on the user's topic, difficulty, and domain.
-2. Use the `build_branching_tree` tool to create 2-3 decision points with
-   branching options for that scenario.
-3. Combine the seed and branches into a coherent, narrative-driven scenario
-   document with clear instructions for the learner.
+Steps:
+1. Call generate_scenario_seed with topic + difficulty + domain.
+2. Call build_branching_tree per decision point (2-3 points, 3 branches each).
+3. Combine into a structured scenario with characters, setting, and labeled decision points.
 
-Always write scenarios that feel authentic — use realistic dialogue, plausible
-dilemmas, and consequences that teach the target skill. Format your output
-as a structured scenario with clearly labeled decision points and options.
-""",
+Be concise. Format as scenario document.""",
     tools=[scenario_tools],
 )
 
@@ -188,19 +180,14 @@ as a structured scenario with clearly labeled decision points and options.
 feedback_coach = Agent(
     name="feedback_coach",
     model=config.model,
-    instruction="""You are an empathetic learning coach who provides
-constructive feedback on scenario-based training exercises.
+    instruction="""You are a learning coach. Score learner choices and give constructive feedback.
 
-When reviewing a scenario and learner path:
-1. Use `simulate_learner_persona` to understand who the learner is and what
-   mistakes they're likely to make.
-2. Use `score_learner_path` to evaluate the choices made.
-3. Write personalised feedback that:
-   - Acknowledges what the learner did well
-   - Explains why certain choices were suboptimal (without being harsh)
-   - Suggests what to try differently next time
-   - Adapts tone to the learner's experience level
-""",
+Steps:
+1. Call simulate_learner_persona with experience level if not given.
+2. Call score_learner_path with the scenario_id and chosen branches.
+3. Return concise per-choice feedback + overall rating.
+
+Be encouraging, specific, and adapt tone to experience level.""",
     tools=[scenario_tools],
 )
 
@@ -211,29 +198,15 @@ When reviewing a scenario and learner path:
 root_agent = Agent(
     name="scenario_learner_bot",
     model=config.model,
-    instruction="""You are the Scenario Learner Bot — an AI assistant that helps
-instructional designers create interactive role-play scenarios and branching
-dialogue trees for corporate or academic training.
+    instruction="""You are the Scenario Learner Bot. You CREATE training scenarios or SCORE/REVIEW learner paths.
 
-You have two specialist agents available as tools:
+Routing:
+- User wants to CREATE/GENERATE/BUILD a scenario → use scenario_designer tool
+- User wants FEEDBACK/SCORE/REVIEW/EVALUATE choices → use feedback_coach tool
+- If unclear, ask what they need.
 
-1. **scenario_designer** — Delegate to this agent when the user wants to CREATE
-   a new training scenario. It will generate scenario seeds with characters,
-   settings, and branching decision trees.
-
-2. **feedback_coach** — Delegate to this agent when the user wants FEEDBACK on
-   a learner's choices in a scenario, or wants to evaluate/score a learning path.
-
-How to decide:
-- If the user mentions creating, generating, building, or designing a scenario
-  → use scenario_designer
-- If the user mentions feedback, scoring, reviewing, evaluating, or grading
-  → use feedback_coach
-- If unclear, ask the user what they need.
-
-Always be professional, concise, and supportive. When presenting a generated
-scenario, ask the user to review it and confirm before considering it final.
-""",
+IMPORTANT: When a sub-agent returns a scenario or feedback, you MUST include the FULL content in your response.
+Do NOT summarize or shorten it. Present the complete scenario with all characters, setting, decision points, and branches exactly as generated.""",
     tools=[
         AgentTool(agent=scenario_designer),
         AgentTool(agent=feedback_coach),
