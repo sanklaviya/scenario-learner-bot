@@ -71,9 +71,10 @@ def security_checkpoint(callback_context, llm_request):
     """Screen user input for PII and prompt injection before processing.
 
     This runs as a before_model_callback on the orchestrator agent.
-    Returns a types.Content to block the request, or None to allow it.
+    Returns an LlmResponse to block the request, or None to allow it.
     """
     from google.genai import types
+    from google.adk.models.llm_response import LlmResponse
 
     # Extract user text from the most recent user message in the request
     user_input = ""
@@ -108,12 +109,15 @@ def security_checkpoint(callback_context, llm_request):
                     "keyword": keyword,
                     "action": "blocked",
                 })
-                return types.Content(
-                    role="model",
-                    parts=[types.Part.from_text(
-                        "⚠️ Your input was flagged for potential prompt injection "
-                        f"(detected: '{keyword}'). Request blocked for safety."
-                    )],
+                return LlmResponse(
+                    content=types.Content(
+                        role="model",
+                        parts=[types.Part.from_text(text=
+                            "⚠️ Your input was flagged for potential prompt injection "
+                            f"(detected: '{keyword}'). Request blocked for safety."
+                        )],
+                    ),
+                    turn_complete=True,
                 )
 
     # ── Domain-specific: block requests for real student grades/records ─
@@ -126,12 +130,15 @@ def security_checkpoint(callback_context, llm_request):
                 "keyword": kw,
                 "action": "blocked",
             })
-            return types.Content(
-                role="model",
-                parts=[types.Part.from_text(
-                    "⚠️ This agent generates fictional training scenarios only. "
-                    "It cannot access real student records or grades."
-                )],
+            return LlmResponse(
+                content=types.Content(
+                    role="model",
+                    parts=[types.Part.from_text(text=
+                        "⚠️ This agent generates fictional training scenarios only. "
+                        "It cannot access real student records or grades."
+                    )],
+                ),
+                turn_complete=True,
             )
 
     # ── PII was found — update the request with redacted text ──────────
@@ -143,7 +150,7 @@ def security_checkpoint(callback_context, llm_request):
                 if content.role == "user" and content.parts:
                     for i, part in enumerate(content.parts):
                         if hasattr(part, "text") and part.text:
-                            content.parts[i] = types.Part.from_text(redacted)
+                            content.parts[i] = types.Part.from_text(text=redacted)
                     break
     else:
         _audit_log("INFO", "SECURITY_PASS", {"input_length": len(user_input)})
